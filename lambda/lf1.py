@@ -8,9 +8,13 @@ import mailparser
 import json
 import time
 import urllib.parse
+import os
+
+image_name = os.environ['IMAGE_NAME']
 
 vocabulary_length = 9013
-model = MXNetPredictor('sms-spam-classifier-mxnet-2022-11-21-22-42-04-356')
+# model = MXNetPredictor('sms-spam-classifier-mxnet-2022-11-21-22-42-04-356')
+model = MXNetPredictor(image_name)
 s3 = boto3.resource('s3')
 ses = boto3.client("ses")
 
