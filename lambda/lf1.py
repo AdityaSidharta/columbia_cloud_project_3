@@ -11,6 +11,7 @@ import urllib.parse
 import os
 
 image_name = os.environ['IMAGE_NAME']
+print("Get image_name : {}".format(image_name))
 
 vocabulary_length = 9013
 # model = MXNetPredictor('sms-spam-classifier-mxnet-2022-11-21-22-42-04-356')
