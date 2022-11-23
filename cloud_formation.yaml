@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  BucketName:
+    Type: String
+    
+Resources:
+    S3BucketEmail:
+        Type: "AWS::S3::Bucket"
+        DependsOn:
+            - LambdaFunctionPermission
+        Properties:
+            BucketName: !Ref BucketName
+            NotificationConfiguration: 
+                LambdaConfigurations: 
+                  - Event: "s3:ObjectCreated:Put"
+                    Function: !GetAtt LambdaFunction.Arn
+
+    LambdaFunctionPermission:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: lambda:InvokeFunction
+            FunctionName: !Ref LambdaFunction
+            Principal: s3.amazonaws.com
+            SourceArn: !Sub 'arn:aws:s3:::${BucketName}'
+            SourceAccount: !Ref AWS::AccountId
+
+    S3BucketEmailPolicy:
+        Type: "AWS::S3::BucketPolicy"
+        Properties:
+            Bucket: !Ref S3BucketEmail
+            PolicyDocument: 
+                Version: "2012-10-17"
+                Statement: 
+                  - 
+                    Sid: "AllowSESPuts"
+                    Effect: "Allow"
+                    Principal: 
+                        Service: "ses.amazonaws.com"
+                    Action: "s3:PutObject"
+                    Resource: !Sub arn:aws:s3:::${S3BucketEmail}
+                    Condition: 
+                        StringEquals: 
+                            "AWS:SourceAccount": !Ref AWS::AccountId
+
+    IAMRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - !Ref IAMManagedPolicy
+              - "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+              - "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+              - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+
+    IAMManagedPolicy:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            Path: "/service-role/"
+            PolicyDocument: !Sub |
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "logs:CreateLogGroup",
+                            "Resource": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": [
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/lf1-email:*"
+                            ]
+                        }
+                    ]
+                }
+
+    LambdaFunction:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: ""
+            Environment: 
+                Variables: 
+                    IMAGE_NAME: "sms-spam-classifier-mxnet-2022-11-21-22-42-04-356"
+            FunctionName: "lf1-email"
+            Handler: "lambda_function.lambda_handler"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: "hehesdd"
+                S3Key: !Sub "lf1.zip"
+            MemorySize: 128
+            Role: !GetAtt IAMRole.Arn
+            Runtime: "python3.7"
+            Timeout: 30
+            TracingConfig: 
+                Mode: "PassThrough"
+            EphemeralStorage: 
+                Size: 512
+
+
+    # S3BucketFunction:
+    #     Type: "AWS::S3::Bucket"
