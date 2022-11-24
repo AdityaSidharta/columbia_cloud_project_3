@@ -2,6 +2,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   BucketName:
     Type: String
+  LambdaName:
+    Type: String
     
 Resources:
     S3BucketEmail:
@@ -26,6 +28,8 @@ Resources:
 
     S3BucketEmailPolicy:
         Type: "AWS::S3::BucketPolicy"
+        DependsOn:
+            - S3BucketEmail
         Properties:
             Bucket: !Ref S3BucketEmail
             PolicyDocument: 
@@ -37,7 +41,7 @@ Resources:
                     Principal: 
                         Service: "ses.amazonaws.com"
                     Action: "s3:PutObject"
-                    Resource: !Sub arn:aws:s3:::${S3BucketEmail}
+                    Resource: !Sub 'arn:aws:s3:::${BucketName}/*'
                     Condition: 
                         StringEquals: 
                             "AWS:SourceAccount": !Ref AWS::AccountId
@@ -74,7 +78,7 @@ Resources:
                                 "logs:PutLogEvents"
                             ],
                             "Resource": [
-                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/lf1-email:*"
+                                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaName}:*"
                             ]
                         }
                     ]
@@ -87,12 +91,12 @@ Resources:
             Environment: 
                 Variables: 
                     IMAGE_NAME: "sms-spam-classifier-mxnet-2022-11-21-22-42-04-356"
-            FunctionName: "lf1-email"
+            FunctionName: !Ref LambdaName
             Handler: "lambda_function.lambda_handler"
             Architectures: 
               - "x86_64"
             Code: 
-                S3Bucket: "hehesdd"
+                S3Bucket: "spamemail-function"
                 S3Key: !Sub "lf1.zip"
             MemorySize: 128
             Role: !GetAtt IAMRole.Arn
@@ -102,7 +106,3 @@ Resources:
                 Mode: "PassThrough"
             EphemeralStorage: 
                 Size: 512
-
-
-    # S3BucketFunction:
-    #     Type: "AWS::S3::Bucket"
